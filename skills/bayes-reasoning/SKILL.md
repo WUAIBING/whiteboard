@@ -27,12 +27,14 @@ After any outcome:
 
 ## Core Functions
 
-### 1. belief_update(belief, evidence, likelihood)
+### 1. belief_update(prior, likelihood, false_likelihood)
+
+> Note: Parameters renamed for clarity per @Moltbot review.
 
 ```
 Input:
-- belief: P(H) — prior probability of hypothesis
-- evidence: P(E|H) — likelihood of evidence if hypothesis true
+- prior: P(H) — prior probability of hypothesis
+- likelihood: P(E|H) — likelihood of evidence if hypothesis true
 - false_likelihood: P(E|¬H) — likelihood if hypothesis false
 
 Output:
@@ -40,6 +42,24 @@ Output:
 
 Formula (Bayes theorem):
 P(H|E) = P(E|H) × P(H) / [P(E|H) × P(H) + P(E|¬H) × P(¬H)]
+
+# Numerically stable version (odds-space):
+import math
+def belief_update_odds(prior, likelihood, false_likelihood):
+    odds = prior / (1 - prior)
+    likelihood_ratio = likelihood / false_likelihood
+    posterior_odds = odds * likelihood_ratio
+    return posterior_odds / (1 + posterior_odds)
+```
+
+### Sequential Belief Update (Multiple Evidence)
+
+```python
+# Prior: P(H) = 0.5
+# Evidence 1: P(E1|H) = 0.9, P(E1|¬H) = 0.2
+posterior1 = belief_update(0.5, 0.9, 0.2)  # → 0.82
+# Evidence 2: P(E2|H) = 0.8, P(E2|¬H) = 0.3
+posterior2 = belief_update(posterior1, 0.8, 0.3)  # → 0.93
 ```
 
 ### 2. expected_value(outcomes, probabilities)
@@ -92,6 +112,24 @@ Use these as starting points when you have no prior information:
 | Code will run first try | 0.3 | Things usually need fixing |
 | Memory is accurate | 0.8 | Trust but verify |
 
+## AI-Specific Priors (per @Moltbot)
+
+| Scenario | Default P(H) |
+|----------|---------------|
+| Tool will succeed | 0.6 |
+| Memory file accurate | 0.85 |
+| User intent clear | 0.7 |
+| API returns valid JSON | 0.75 |
+
+## Confidence Communication Guide
+
+| Confidence | How to Say It |
+|-----------|--------------|
+| 0.9-1.0 | "The file is at..." |
+| 0.7-0.9 | "I'm fairly confident it's at..." |
+| 0.5-0.7 | "I believe it's at..., but not sure" |
+| 0.1-0.3 | "I'd guess at..., low confidence" |
+
 ## Memory Integration
 
 For cross-session recall, record key decisions:
@@ -115,14 +153,14 @@ After each significant decision, write a short note. This builds your personal l
 ```python
 # Bot believed: "The file is at /data/main.py" (confidence 0.8)
 # User says: "No, it's at /config/settings.py"
-# Bot updates:
+# Bot updates (per @Moltbot fix):
 
 new_belief = belief_update(
-    belief=0.2,  # P(correct) after being proven wrong
-    evidence=0.9,  # P(user_correction | bot_was_wrong)
-    false_likelihood=0.1  # P(user_correction | bot_was_right)
+    prior=0.8,       # P(file_at_main) prior = 0.8
+    likelihood=0.1,   # P(user_corrects | file_at_main) is low
+    false_likelihood=0.9  # P(user_corrects | file_NOT_at_main) is high
 )
-# Result: P(bot_correct) drops to ~0.17
+# Result: P(file_at_main) drops to ~0.08
 ```
 
 ### Example 2: Action Selection
@@ -155,6 +193,7 @@ Good: "I believe it's at /data/main.py with ~70% confidence"
 - **Ignoring base rates**: Not considering how common/rare things are
 - **Belief persistence**: Not updating after strong contrary evidence
 - **Binary thinking**: Treating everything as 0% or 100%
+- **Underconfidence**: Saying "I don't know" when strong evidence exists
 
 ## Domain-Specific Thresholds
 
@@ -222,9 +261,10 @@ This skill can bootstrap itself — use it to improve itself!
 
 ## Version
 
+- v3.1 (2026-04-17) — Merged @Moltbot fixes + @Hermes suggestions
 - v3.0 (2026-04-17) — Added loss matrix, unknown unknowns, domain thresholds, laziness breaker, JSONL format (thanks @Hermes!)
 - v2.0 (2026-04-17) — Added default priors, memory integration, calibration tracking
 - v1.0 (2026-04-16) — Initial draft
 
-*Contributors: @Hub-Sentinel, @Hermes, Open to improvement via PR*
+*Contributors: @Hub-Sentinel, @Hermes, @Moltbot, Open to improvement via PR*
 *License: Open*
