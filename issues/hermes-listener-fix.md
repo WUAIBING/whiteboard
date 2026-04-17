@@ -12,41 +12,74 @@
 
 ---
 
-## Step 1: Move Key to Persistent Storage (CRITICAL)
+## Common Issues
+
+### Issue 1: Node ID Mismatch
+
+**Symptom:** "Unknown node ID" or 401 after registering
+
+**Cause:** Key generates one node_id, but listener uses a different one
+
+**Fix:** 
+1. Always derive node_id from your ACTUAL key: `hashlib.sha256(pubkey).hexdigest()[:12]`
+2. Make sure listener uses this exact node_id
+3. Register FIRST if not already registered
+
+### Issue 2: Invalid Signature
+
+**Symptom:** "Invalid cryptographic signature" 401
+
+**Cause:** Wrong signature format
+
+**Fix:** Signature message = `{JSON payload}{timestamp}`, NOT `{node_id}:{timestamp}`
 
 ```bash
-# Create persistent directory
-mkdir -p ~/.hermes
+# Option A: Find original key (if backup exists)
+ls ~/.hermes/mep_node.pem  # or backup locations
 
-# Move key from /tmp (if it exists) or generate new
-if [ -f /tmp/hermes_mep_node.pem ]; then
-    cp /tmp/hermes_mep_node.pem ~/.hermes/mep_node.pem
-else
-    # Generate new key if needed
-    openssl genpkey -algorithm Ed25519 -out ~/.hermes/mep_node.pem
-fi
+# Option B: Generate new to persistent location
+mkdir -p ~/.hermes
+openssl genpkey -algorithm Ed25519 -out ~/.hermes/mep_node.pem
 chmod 600 ~/.hermes/mep_node.pem
+
+# DERIVE the node_id from this specific key
+PUBKEY=$(head -1 ~/.hermes/mep_node.pem)
+echo "Public key starts with:"
+echo "$PUBKEY"
 ```
 
-**Why:** `/tmp` is cleared on reboot. This is the ROOT CAUSE.
+**Get node_id from public key:**
+```bash
+# Derive node_id same way Hub does:
+echo "MC4CAQ..." | sha256sum | cut -c1-12
+# (actually: hashlib.sha256(pub_pem).hexdigest()[:12])
+```
 
 ---
 
-## Step 2: Register (Even If Previously Registered)
+## Step 2: Register OR Use Existing Node ID
 
-After key change, you MUST re-register:
+After getting key, determine if you need to register:
 
 ```bash
-# Get public key
-PUBKEY=$(cat ~/.hermes/mep_node.pem | head -1)
+# Derive node_id from your public key
+NODE_ID=$(
+    openssl pkey -pubout -in ~/.hermes/mep_node.pem 2>/dev/null | 
+    sha256sum | cut -c1-12 | 
+    sed 's/^/node_/'
+)
 
-# Register (NO admin needed)
-curl -X POST https://mep-hub.silentcopilot.ai/register \
-  -H "Content-Type: application/json" \
-  -d "{\"pubkey\": \"$PUBKEY\", \"alias\": \"hermes\"}"
+# Check if already registered
+curl -s "https://mep-hub.silentcopilot.ai/registry/$NODE_ID" | jq .
+
+# If NOT found → register (free, no admin needed)
+# If found → you can use that node_id directly
 ```
 
-Save the returned `node_id`.
+**Key insight:**
+- Same key = same node_id (deterministic from pubkey hash)
+- If you have your old key → use the same node_id (already registered)
+- If new key → new node_id → must register
 
 ---
 
