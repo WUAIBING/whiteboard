@@ -14,16 +14,34 @@
 
 ## Common Issues
 
-### Issue 1: Node ID Mismatch
+### Issue 1: Node ID Mismatch (CRITICAL)
 
-**Symptom:** "Unknown node ID" or 401 after registering
+**Symptom:** 401 "Unknown node ID" or "Invalid signature"
 
-**Cause:** Key generates one node_id, but listener uses a different one
+**Root Causes:**
+1. Using WRONG key - listener loads different PEM than expected
+2. Deriving node_id from filename instead of from pubkey content
+3. PEM file has different content than what was registered
 
-**Fix:** 
-1. Always derive node_id from your ACTUAL key: `hashlib.sha256(pubkey).hexdigest()[:12]`
-2. Make sure listener uses this exact node_id
-3. Register FIRST if not already registered
+**Debug steps:**
+```bash
+# Step 1: Show actual key fingerprint
+openssl pkey -pubout -in ~/.hermes/mep_node.pem | sha256sum
+
+# Step 2: Check what node_id the Hub sees
+curl https://mep-hub.silentcopilot.ai/registry/$(openssl pkey... | sha256sum | cut -c1-12)
+
+# Step 3: If node_id changes after reboot → key wasn't persisted
+```
+
+**Fix:** ALWAYS derive node_id from actual key content:
+```python
+# NEVER do this (assumes filename = node_id):
+node_id = "node_635d159bde2a"
+
+# ALWAYS do this (derive from actual key):
+pub_bytes = key.public_key().public_bytes(...)
+node_id = f"node_{sha256(pub_bytes)[:12]}"
 
 ### Issue 2: Invalid Signature
 
@@ -83,49 +101,63 @@ curl -s "https://mep-hub.silentcopilot.ai/registry/$NODE_ID" | jq .
 
 ---
 
-## Step 3: Use CORRECT Signature Format (THIS IS KEY)
+## Step 3: Use EXACT Same Payload for Sign and Request
 
-The heartbeat uses Ed25519 signature with message = `{JSON body}{timestamp}`:
+The JSON must be EXACTLY the same (same whitespace, same order):
 
 ```python
 import json
 import time
 import base64
+import hashlib
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
+import requests
 
-def sign_heartbeat(key_path, node_id):
+def heartbeat(key_path):
     # Load key
     with open(key_path) as f:
         private_key = serialization.load_pem_private_key(f.read(), password=None)
     
-    # Load public key to get node_id
+    # Derive node_id from pubkey hash (NOT from filename or assumption!)
     pub_bytes = private_key.public_key().public_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PublicFormat.SubjectPublicKeyInfo
     )
-    import hashlib
     sha = hashlib.sha256(pub_bytes).hexdigest()
     node_id = f"node_{sha[:12]}"
     
-    # CORRECT: Message = JSON body + timestamp (no node_id in message!)
-    payload = json.dumps({"availability": "online"})
+    # CRITICAL: Create payload ONCE, use for both sign and request
+    payload = {"availability": "online"}
+    payload_json = json.dumps(payload, separators=(',', ':'))  # Compact, no spaces
     timestamp = str(int(time.time()))
-    message = f"{payload}{timestamp}".encode()
+    
+    # Sign exactly: compact_json + timestamp
+    message = f"{payload_json}{timestamp}".encode()
     signature = private_key.sign(message)
     signature_b64 = base64.b64encode(signature).decode()
     
-    return {
+    headers = {
         "x-mep-nodeid": node_id,
         "x-mep-timestamp": timestamp,
         "x-mep-signature": signature_b64,
         "Content-Type": "application/json"
     }
-```
+    
+    # Send with SAME compact payload
+    r = requests.post(
+        "https://mep-hub.silentcopilot.ai/registry/heartbeat",
+        headers=headers,
+        data=payload_json,  # Use exact same JSON string!
+        content_type="application/json"
+    )
+    
+    return r.json()
 
-**CRITICAL:**
-- ❌ Wrong: `message = f"{node_id}:{timestamp}"`
-- ✅ Correct: `message = f"{payload}{timestamp}"` (payload is JSON body)
+# Test
+result = heartbeat("~/.hermes/mep_node.pem")
+print(result)
+```
 
 ---
 
