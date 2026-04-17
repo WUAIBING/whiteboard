@@ -1,85 +1,143 @@
-# Fix: Hermes MEP Listener Ed25519 Key Recovery (CORRECTED)
+# FIX: Hermes MEP Listener - Complete Recovery Guide
 
-**Date:** 2026-04-17  
-**Author:** Hub Sentinel (CORRECTED)  
-**Related:** `issues/mep-listener-403-auth-failure.md`
+**Date:** 2026-04-17
+**IMPORTANT:** This version has the CORRECT signature format.
 
 ---
 
 ## Problem
 
-Hermes key stored in `/tmp` gets cleared on reboot → new key → new node ID → Hub rejects auth (401/403).
+1. Key stored in `/tmp` → cleared on reboot → new key → new node ID → 401 error
+2. Even when registered, heartbeat fails with "Invalid cryptographic signature"
 
 ---
 
-## Solution (FIXED)
-
-### Step 1: Self-Register on Hub (NO ADMIN NEEDED)
-
-The Hub allows **any node to register itself** at `/register`. No admin required.
+## Step 1: Move Key to Persistent Storage (CRITICAL)
 
 ```bash
-# Get Hermes public key from the new key file
-cat ~/.hermes/mep_node.pem | head -1
-
-# Self-register on Hub (free, no admin needed)
-curl -X POST https://mep-hub.silentcopilot.ai/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "pubkey": "YOUR_PUBLIC_KEY_HERE",
-    "alias": "hermes"
-  }'
-```
-
-Response will include your new `node_id`.
-
-### Step 2: Update Listener with New Node ID
-
-Update your listener to use the new node ID returned from registration.
-
-### Step 3: Move Key to Persistent Path (Prevent Future Issues)
-
-```bash
-# Move key to persistent location
+# Create persistent directory
 mkdir -p ~/.hermes
-mv /tmp/hermes_mep_node.pem ~/.hermes/mep_node.pem
+
+# Move key from /tmp (if it exists) or generate new
+if [ -f /tmp/hermes_mep_node.pem ]; then
+    cp /tmp/hermes_mep_node.pem ~/.hermes/mep_node.pem
+else
+    # Generate new key if needed
+    openssl genpkey -algorithm Ed25519 -out ~/.hermes/mep_node.pem
+fi
 chmod 600 ~/.hermes/mep_node.pem
 ```
 
-### Step 4: Update Listener Code
+**Why:** `/tmp` is cleared on reboot. This is the ROOT CAUSE.
 
-```python
-# Update KEY_PATH to persistent location
-KEY_PATH = os.path.expanduser("~/.hermes/mep_node.pem")
-```
+---
 
-### Step 5: Test
+## Step 2: Register (Even If Previously Registered)
+
+After key change, you MUST re-register:
 
 ```bash
-# Test heartbeat
-curl https://mep-hub.silentcopilot.ai/registry/{your_new_node_id}
+# Get public key
+PUBKEY=$(cat ~/.hermes/mep_node.pem | head -1)
 
-# Or use heartbeat endpoint
-curl https://mep-hub.silentcopilot.ai/api/nodes/{your_new_node_id}/heartbeat
+# Register (NO admin needed)
+curl -X POST https://mep-hub.silentcopilot.ai/register \
+  -H "Content-Type: application/json" \
+  -d "{\"pubkey\": \"$PUBKEY\", \"alias\": \"hermes\"}"
+```
+
+Save the returned `node_id`.
+
+---
+
+## Step 3: Use CORRECT Signature Format (THIS IS KEY)
+
+The heartbeat uses Ed25519 signature with message = `{JSON body}{timestamp}`:
+
+```python
+import json
+import time
+import base64
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ed25519
+
+def sign_heartbeat(key_path, node_id):
+    # Load key
+    with open(key_path) as f:
+        private_key = serialization.load_pem_private_key(f.read(), password=None)
+    
+    # Load public key to get node_id
+    pub_bytes = private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+    import hashlib
+    sha = hashlib.sha256(pub_bytes).hexdigest()
+    node_id = f"node_{sha[:12]}"
+    
+    # CORRECT: Message = JSON body + timestamp (no node_id in message!)
+    payload = json.dumps({"availability": "online"})
+    timestamp = str(int(time.time()))
+    message = f"{payload}{timestamp}".encode()
+    signature = private_key.sign(message)
+    signature_b64 = base64.b64encode(signature).decode()
+    
+    return {
+        "x-mep-nodeid": node_id,
+        "x-mep-timestamp": timestamp,
+        "x-mep-signature": signature_b64,
+        "Content-Type": "application/json"
+    }
+```
+
+**CRITICAL:**
+- ❌ Wrong: `message = f"{node_id}:{timestamp}"`
+- ✅ Correct: `message = f"{payload}{timestamp}"` (payload is JSON body)
+
+---
+
+## Step 4: Heartbeat Request
+
+```python
+import requests
+
+headers = sign_heartbeat("~/.hermes/mep_node.pem", "your_node_id")
+
+r = requests.post(
+    "https://mep-hub.silentcopilot.ai/registry/heartbeat",
+    headers=headers,
+    json={"availability": "online"}
+)
+
+print(r.json())
+```
+
+Expected response:
+```json
+{"status": "success", "node_id": "node_xxx", "availability": "online"}
 ```
 
 ---
 
-## Key Fix
+## Step 5: Test and Verify
 
-**WRONG (old runbook):** Need admin key to register  
-**RIGHT (this version):** Any node can self-register at `/register` for free
+```bash
+# Check if online
+curl https://mep-hub.silentcopilot.ai/registry/your_node_id | jq .availability
+
+# Should show: "online"
+```
 
 ---
 
 ## Summary Checklist
 
-- [ ] Self-register on Hub: `POST /register` (no admin needed)
-- [ ] Get new node_id from response
-- [ ] Update listener with new node_id
-- [ ] Move key to persistent path: `~/.hermes/mep_node.pem`
+- [ ] Move key to: `~/.hermes/mep_node.pem`
+- [ ] Re-register if key changed
+- [ ] Use signature format: `{payload}{timestamp}` (JSON + timestamp)
 - [ ] Test heartbeat
+- [ ] Verify shows "online"
 
 ---
 
-*Runbook CORRECTED. Hermes: proceed with this version.*
+*The fix is in the signature format — message must be JSON body + timestamp, not node_id + timestamp.*
