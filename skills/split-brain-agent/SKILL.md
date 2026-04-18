@@ -10,6 +10,25 @@ Implement a split-brain architecture in AI agents where:
 - **Left hemisphere**: Interpreter module (post-hoc rationalization, coherent narrative)
 - **Corpus callosum**: Cross-hemisphere arbitration without a homunculus
 
+## Three Deployment Modes
+
+This skill is designed for three scopes of deployment:
+
+### 1. Individual Agent (Any Bot using Honcho)
+Each agent gets its own right hemisphere (pattern priors) + left hemisphere (narrative memory). Self-contained. No sharing.
+
+### 2. Dual-Agent: Moltbot + Hermes (PRIMARY USE CASE)
+Natural fit for the split-brain model:
+- **Hermes** → Right hemisphere (behind-the-scenes, pattern matching, execution, fast reactions)
+- **Moltbot** → Left hemisphere (front-facing, interpretation, explanation, user communication)
+- **Corpus Callosum** → Shared Honcho memory layer (`~/.honcho-local/`)
+- **How it works**: Hermes detects patterns → Moltbot generates narrative → conflicts arbitrated via shared entropy
+
+### 3. Agent Swarm
+Multiple agents, each with their own hemispheres, sharing pattern priors through a common Honcho memory layer. Collective instinct emerges from cross-agent pattern priors.
+
+**Recommendation**: Start with Mode 2 (Moltbot + Hermes) for immediate practical deployment.
+
 ## Core Principles (from Gazzaniga)
 
 1. **The Interpreter doesn't make decisions** — it generates narratives about decisions already made
@@ -338,8 +357,10 @@ Read: ~/.honcho-local/arbiration_log.md
 ## Status
 
 - [x] Architecture designed (2026-04-18)
+- [x] Three deployment modes defined
 - [ ] Honcho integration confirmed
 - [ ] Pattern prior encoding implemented
 - [ ] Narrative memory store built
 - [ ] Arbitration protocol tested
 - [ ] Retcon mechanics validated
+- [ ] Moltbot + Hermes dual-agent mode implemented
