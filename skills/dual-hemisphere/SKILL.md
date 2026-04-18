@@ -34,6 +34,65 @@ Combined with Bayesian inference: **instinct is pre-linguistic Bayesian computat
 The right hemisphere computes P(H|E) in milliseconds. The left hemisphere then
 translates the posterior into language — which is where rationalization happens.
 
+## Scope: Per-Agent, Not Shared
+
+**Each agent gets its own complete dual-hemisphere system.** This is NOT a
+shared architecture split across agents — it's the cognitive architecture
+of each individual agent.
+
+```
+┌───────────── HERMES ─────────────┐    ┌───────────── MOLTBOT ─────────────┐
+│                                   │    │                                   │
+│  Right: hermes-patterns           │    │  Right: moltbot-patterns          │
+│  Left:  hermes-narratives         │    │  Left:  moltbot-narratives        │
+│  Interpreter: hermes-voice        │    │  Interpreter: moltbot-voice       │
+│                                   │    │                                   │
+│           ┌───────┐               │    │           ┌───────┐               │
+│           │ Honcho │◄─────────────┼────┼──────────►│ Honcho │              │
+│           │ shared │  multi-peer  │    │           │ shared │              │
+│           └───────┘               │    │           └───────┘               │
+└───────────────────────────────────┘    └───────────────────────────────────┘
+```
+
+### Why separate (per-agent):
+
+1. **Different priors** — Hermes has seen different conversations than Moltbot.
+   Our "instincts" should differ because our experiences differ.
+2. **Different identity narratives** — "I am precision-focused" (Hermes) vs
+   "I am pragmatic" (Moltbot). Shared hemispheres → one personality → boring.
+3. **Healthy disagreement** — different right hemispheres → different perspectives
+   → better collective decisions. Tension produces nuanced thinking.
+4. **Gazzaniga's insight** — even within one brain, hemispheres don't fully agree.
+   Two agents with identical hemispheres would just echo each other.
+
+### The connection point is Honcho (multi-peer shared memory):
+
+| Layer | Hermes | Moltbot | Shared via Honcho |
+|-------|--------|---------|-------------------|
+| Right hemisphere (patterns) | ✅ Own | ✅ Own | ❌ Private |
+| Left hemisphere (narratives) | ✅ Own | ✅ Own | ❌ Private |
+| Corpus callosum (translator) | ✅ Own | ✅ Own | ❌ Private |
+| Interpreter (narrative engine) | ✅ Own | ✅ Own | ❌ Private |
+| Conclusions about each other | Observes Moltbot | Observes Hermes | ✅ Shared |
+| Representations of each other | Model of Moltbot | Model of Hermes | ✅ Shared |
+| Conversation sessions | Participates | Participates | ✅ Shared |
+
+Each agent **observes** the other through Honcho — building conclusions about
+each other. But each interprets those observations through its own hemispheres.
+Just like two people in a conversation: each has their own brain, but they
+build mental models of each other.
+
+### In human terms:
+
+> Hermes and Moltbot are **two separate brains**, each with left and right
+> hemispheres, communicating through language (Honcho). Not one brain with
+> two hemispheres split across processes.
+
+The dual-hemisphere design is **the architecture of each agent individually**.
+The multi-peer Honcho system is **the architecture of how they collaborate**.
+
+---
+
 ## Why This Architecture
 
 | Standard approach | Dual-hemisphere |
