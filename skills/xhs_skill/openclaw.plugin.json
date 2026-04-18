@@ -1,0 +1,62 @@
+{
+  "id": "xiaohongshu-browser",
+  "name": "Xiaohongshu Browser",
+  "description": "Playwright-backed Xiaohongshu browsing and comment extraction. Invoke when the agent needs authenticated note content, images, or comments.",
+  "entry": "./index.mjs",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "authStatePath": {
+        "type": "string",
+        "description": "Path to the Playwright storage-state JSON exported from a logged-in Xiaohongshu session."
+      },
+      "browserChannel": {
+        "type": "string",
+        "enum": [
+          "chrome",
+          "msedge",
+          "chromium"
+        ],
+        "default": "chrome"
+      },
+      "browserExecutablePath": {
+        "type": "string",
+        "description": "Optional explicit browser executable path."
+      },
+      "headless": {
+        "type": "boolean",
+        "default": true
+      },
+      "locale": {
+        "type": "string",
+        "default": "zh-CN"
+      },
+      "timezoneId": {
+        "type": "string",
+        "default": "Asia/Shanghai"
+      },
+      "navigationTimeoutMs": {
+        "type": "integer",
+        "minimum": 1000,
+        "default": 45000
+      },
+      "actionTimeoutMs": {
+        "type": "integer",
+        "minimum": 1000,
+        "default": 10000
+      },
+      "evidenceDir": {
+        "type": "string",
+        "description": "Optional directory for HTML and screenshot evidence when saveEvidence is requested."
+      },
+      "userAgent": {
+        "type": "string",
+        "description": "Optional custom user agent."
+      }
+    },
+    "required": [
+      "authStatePath"
+    ]
+  }
+}

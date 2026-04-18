@@ -1,0 +1,11 @@
+{
+  "name": "openclaw-xiaohongshu-browser",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "OpenClaw plugin for Xiaohongshu article browsing and comment extraction via Playwright",
+  "main": "./index.mjs",
+  "dependencies": {
+    "playwright": "1.60.0-alpha-2026-04-14"
+  }
+}
