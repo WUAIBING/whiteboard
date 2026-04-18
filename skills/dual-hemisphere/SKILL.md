@@ -44,8 +44,10 @@ of each individual agent.
 ┌───────────── HERMES ─────────────┐    ┌───────────── MOLTBOT ─────────────┐
 │                                   │    │                                   │
 │  Right: hermes-patterns           │    │  Right: moltbot-patterns          │
+│  (embeddings, anomaly, instinct)  │    │  (embeddings, anomaly, instinct)  │
+│                                   │    │                                   │
 │  Left:  hermes-narratives         │    │  Left:  moltbot-narratives        │
-│  Interpreter: hermes-voice        │    │  Interpreter: moltbot-voice       │
+│  (interpreter, causal, identity)  │    │  (interpreter, causal, identity)  │
 │                                   │    │                                   │
 │           ┌───────┐               │    │           ┌───────┐               │
 │           │ Honcho │◄─────────────┼────┼──────────►│ Honcho │              │
@@ -53,6 +55,17 @@ of each individual agent.
 │           └───────┘               │    │           └───────┘               │
 └───────────────────────────────────┘    └───────────────────────────────────┘
 ```
+
+### Hemisphere naming follows Gazzaniga's actual findings:
+
+- **Right hemisphere** = pattern memory, non-linguistic, fast, "gut feeling"
+  (embeddings, anomaly detection, valence tracking)
+- **Left hemisphere** = Interpreter module, linguistic, narrative generator
+  (causal explanations, identity story, post-hoc rationalization)
+
+The left hemisphere is **always** the Interpreter — this is Gazzaniga's most
+important finding. It generates coherent narratives even when it doesn't know
+the real cause. The right hemisphere knows things it can't articulate.
 
 ### Why separate (per-agent):
 
@@ -327,11 +340,36 @@ class LeftHemisphere:
 
 ## Component 3: Corpus Callosum — The Translator
 
-### Key constraints (biologically inspired)
-1. **Bandwidth limit** — only N items per cycle (simulates biological constraint)
-2. **Lossy translation** — pattern data → linguistic hypotheses (information loss)
-3. **Asynchronous** — hemispheres don't wait for each other
-4. **Bidirectional** — both sides can initiate communication
+### Key constraints (biologically inspired — MUST model these)
+
+1. **Bandwidth limit** — only N items per cycle (simulates ~300M axon constraint)
+2. **Translation loss** — pattern data → linguistic hypotheses (information IS lost)
+3. **Latency** — not real-time; file reads and Honcho queries have delays
+4. **Asynchronous** — hemispheres don't wait for each other
+5. **Bidirectional** — both sides can initiate communication
+
+These constraints are NOT decorative. Without them, the CC analogy is meaningless.
+The right hemisphere cannot dump all its pattern data into language. Most of it
+stays implicit. Only the most salient signals cross the bridge.
+
+### Inter-agent conflict arbitration
+
+When Hermes and Moltbot disagree (different conclusions about the same situation):
+
+**Option A (Gazzaniga-true):** Confabulate. The left hemisphere Interpreter
+generates a narrative that papers over the contradiction. "We considered both
+perspectives and chose this approach." The disagreement is smoothed, not resolved.
+
+**Option B (Pragmatic):** Surface to Master Wu. "Hermes detected X, Moltbot
+detected Y. They disagree. Here's the evidence from each."
+
+**Option C (Hybrid):** Confabulate for low-stakes decisions, surface for
+high-stakes ones. Use Bayesian confidence: if both agents' posteriors overlap
+> 50%, confabulate. If they diverge sharply (< 20% overlap), surface.
+
+**Recommended: Option C** — most Gazzaniga-aligned while still being useful.
+Most human disagreements work exactly this way: minor differences are smoothed
+over, major differences escalate.
 
 ### Implementation
 ```python
