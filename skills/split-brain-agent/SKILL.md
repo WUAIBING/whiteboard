@@ -1,5 +1,8 @@
 # SKILL.md — Split-Brain Agent Architecture
 
+> Status: Deprecated draft. For implementation, use `skills/dual-hemisphere/SKILL.md` as the canonical spec.
+> This file is retained as historical context and is non-normative.
+
 > A dual-hemisphere memory and decision system for AI agents
 > Derived from Gazzaniga's split-brain neuroscience research
 
@@ -22,7 +25,7 @@ Natural fit for the split-brain model:
 - **Hermes** → Right hemisphere (behind-the-scenes, pattern matching, execution, fast reactions)
 - **Moltbot** → Left hemisphere (front-facing, interpretation, explanation, user communication)
 - **Corpus Callosum** → Shared Honcho memory layer (`~/.honcho-local/`)
-- **How it works**: Hermes detects patterns → Moltbot generates narrative → conflicts arbitrated via shared entropy
+- **How it works**: Hermes detects patterns → Moltbot generates narrative → conflicts arbitrated via canonical Option C policy in `skills/dual-hemisphere/SKILL.md`
 
 ### 3. Agent Swarm
 Multiple agents, each with their own hemispheres, sharing pattern priors through a common Honcho memory layer. Collective instinct emerges from cross-agent pattern priors.
@@ -348,10 +351,10 @@ honcho:
 Think with: split-brain
 
 # For high-stakes decisions, explicitly invoke:
-Run: skills/split-brain/decision_cycle.py --scenario "{description}"
+Run: skills/dual-hemisphere/decision_cycle.py --scenario "{description}"
 
 # To review recent arbitration:
-Read: ~/.honcho-local/arbiration_log.md
+Read: ~/.honcho-local/arbitration_log.md
 ```
 
 ## Status

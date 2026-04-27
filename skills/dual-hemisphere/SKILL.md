@@ -363,13 +363,90 @@ perspectives and chose this approach." The disagreement is smoothed, not resolve
 **Option B (Pragmatic):** Surface to Master Wu. "Hermes detected X, Moltbot
 detected Y. They disagree. Here's the evidence from each."
 
-**Option C (Hybrid):** Confabulate for low-stakes decisions, surface for
-high-stakes ones. Use Bayesian confidence: if both agents' posteriors overlap
-> 50%, confabulate. If they diverge sharply (< 20% overlap), surface.
+**Option C (Hybrid):** Confabulate for low-stakes decisions and surface major
+conflicts for human review. Arbitration policy is adaptive and bot-driven
+(no hardcoded numeric thresholds in early rollout).
 
 **Recommended: Option C** — most Gazzaniga-aligned while still being useful.
 Most human disagreements work exactly this way: minor differences are smoothed
 over, major differences escalate.
+
+### Implementation
+
+Use this roadmap as the implementation source of truth:
+
+1. **Stage 0: Canonical spec freeze**
+   - `skills/dual-hemisphere/SKILL.md` is canonical.
+   - `skills/split-brain-agent/SKILL.md` remains historical/deprecated.
+   - Arbitration actions stay qualitative: `confabulate`, `escalate`, `request_more_evidence`.
+
+2. **Stage 1: Two-agent Honcho foundation (no shared CC yet)**
+   - Hermes and Moltbot run as independent agents connected via Honcho.
+   - No cross-agent corpus callosum arbitration engine in this stage.
+   - Shared channel is collaboration memory, not merged cognition.
+
+3. **Stage 1.5: Bot-choice cognitive mode**
+   - Each bot may choose `legacy_brain` or `dual_brain` at runtime.
+   - Each mode choice must include a reason and be logged.
+   - Any bot can roll back to `legacy_brain` if instability is detected.
+
+4. **Stage 2: Observability baseline**
+   - Track decision quality, safety events, disagreement patterns, latency, and retries.
+   - Keep human-in-the-loop for medium/high-stakes operations.
+
+5. **Stage 3: Soft arbitration policy**
+   - Bots propose one action per case: `confabulate`, `escalate`, `request_more_evidence`.
+   - Avoid fixed numeric gates; adapt by rolling baselines and recent outcomes.
+
+6. **Stage 4+: CC-lite then full hybrid**
+   - Introduce minimal inter-agent summary exchange first (CC-lite).
+   - Promote to full hybrid arbitration only after stable telemetry and operator trust.
+
+### Hybrid Deployment Trigger Parameters (adaptive)
+
+Use these parameters jointly; do not hardcode absolute values during early rollout:
+
+- `stakes_level` (impact of wrong action)
+- `uncertainty_level` (confidence spread, ambiguity signals)
+- `inter_agent_disagreement` (action/rationale divergence)
+- `novelty_shift` (distance from known patterns)
+- `explainability_requirement` (audit need)
+- `latency_budget` (time tolerance)
+- `recent_reliability_by_mode` (`legacy_brain`, `dual_brain`, `hybrid`)
+- `human_override_rate` (operator correction pressure)
+
+### Daily Learning Loop (dream-memory integrated)
+
+Run once per day after dream-memory consolidation:
+
+1. Compare today vs previous day for similar task profiles.
+2. Evaluate mode outcomes (`legacy_brain`, `dual_brain`, `hybrid`) on:
+   - quality (task success/corrections)
+   - safety (risk intercepts/escalations)
+   - efficiency (latency/retries)
+   - overrides (human corrections)
+3. Classify each dimension as `improved`, `flat`, or `degraded`.
+4. Produce daily verdict: `better`, `worse`, or `mixed`.
+5. Write decision: `keep`, `expand`, `rollback`, or `human_review`.
+6. Persist dream-memory summary:
+   - what improved
+   - what degraded
+   - likely cause
+   - next-day policy adjustment
+
+Required telemetry events:
+- `mode.selected` (bot_id, mode, reason)
+- `decision.recorded` (stakes, uncertainty, disagreement, action, outcome)
+- `arbitration.proposed` (action_type, rationale)
+- `arbitration.escalated` (evidence_refs, reviewer)
+- `daily.eval.completed` (verdict, decision, mode_comparison)
+
+### Operational entry points (planned)
+
+- Decision cycle runner: `skills/dual-hemisphere/decision_cycle.py`
+- Arbitration log path: `~/.honcho-local/arbitration_log.md`
+- Daily evaluation log path: `~/.honcho-local/daily_eval_log.md`
+- If these artifacts are missing, treat the feature as design-only (not deployable).
 
 ### Implementation
 ```python
